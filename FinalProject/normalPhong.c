@@ -29,15 +29,15 @@ Mat img2 = image; // Copy of original image
 // Function to calculate lighting using phong model
 // Parameters: Material of object, lights, vector V, normal vector N, number Num of pixels, and number NumL of lights
 // All points share the same material and V
-void phongRed(Material m, Lights* light, double* V, double* N, long Num, int NumL)
+void phongRed(Material m, Lights* light, double* V, double* N, long Num, int NumL, Mat img)
 {
 	for (i = 0; i < NumL; i++) // For each light source
 	   {
-		   for (x = 0; x < img2.rows; x++;) // Iterate through rows of pixels
+		   for (x = 0; x < img.rows; x++;) // Iterate through rows of pixels
 		   {
-			   for (y = 0; y < img2.cols; y++) // Iterate through columns of pixels
+			   for (y = 0; y < img.cols; y++) // Iterate through columns of pixels
 			   {
-				   Vec3b intensity = img2.at<Vec3b>(y, x); // BGR intensity of pixel
+				   Vec3b intensity = img.at<Vec3b>(y, x); // BGR intensity of pixel
 				   
 				   // Image is treated as a plane, i.e. all pixels share the same z coordinate
 				   double L[] = {(light[i].xcord - x), (light[i].ycord - y), (light[i].zcord - 0}; // direction vector from point towards light source
@@ -63,21 +63,21 @@ void phongRed(Material m, Lights* light, double* V, double* N, long Num, int Num
 				   }
 				   
 				   intensity.val[2] += tAmb+tDiff+tSpec; // Change red intensity value
-				   img2.at<Vec3b>(y, x) = intensity; // Change pixel
+				   img.at<Vec3b>(y, x) = intensity; // Change pixel
 			   }
 		   }
 	   }
 }
 
-void phongGreen(Material m, Lights* light, double* V, double* N, long Num, int NumL)
+void phongGreen(Material m, Lights* light, double* V, double* N, long Num, int NumL, Mat img)
 {
 	for (i = 0; i < NumL; i++) // For each light source
 	   {
-		   for (x = 0; x < img2.rows; x++;) // Iterate through rows of pixels
+		   for (x = 0; x < img.rows; x++;) // Iterate through rows of pixels
 		   {
-			   for (y = 0; y < img2.cols; y++) // Iterate through columns of pixels
+			   for (y = 0; y < img.cols; y++) // Iterate through columns of pixels
 			   {
-				   Vec3b intensity = img2.at<Vec3b>(y, x); // BGR intensity of pixel
+				   Vec3b intensity = img.at<Vec3b>(y, x); // BGR intensity of pixel
 				   
 				   // Image is treated as a plane, i.e. all pixels share the same z coordinate
 				   double L[] = {(light[i].xcord - x), (light[i].ycord - y), (light[i].zcord - 0}; // direction vector from point towards light source
@@ -103,21 +103,21 @@ void phongGreen(Material m, Lights* light, double* V, double* N, long Num, int N
 				   }
 				   
 				   intensity.val[1] += tAmb+tDiff+tSpec; // Change green intensity value
-				   img2.at<Vec3b>(y, x) = intensity; // Change pixel
+				   img.at<Vec3b>(y, x) = intensity; // Change pixel
 			   }
 		   }
 	   }
 }
 
-void phongBlue(Material m, Lights* light, double* V, double* N, long Num, int NumL)
+void phongBlue(Material m, Lights* light, double* V, double* N, long Num, int NumL, Mat img)
 {
 	for (i = 0; i < NumL; i++) // For each light source
 	   {
-		   for (x = 0; x < img2.rows; x++;) // Iterate through rows of pixels
+		   for (x = 0; x < img.rows; x++;) // Iterate through rows of pixels
 		   {
-			   for (y = 0; y < img2.cols; y++) // Iterate through columns of pixels
+			   for (y = 0; y < img.cols; y++) // Iterate through columns of pixels
 			   {
-				   Vec3b intensity = img2.at<Vec3b>(y, x); // BGR intensity of pixel
+				   Vec3b intensity = img.at<Vec3b>(y, x); // BGR intensity of pixel
 				   
 				   // Image is treated as a plane, i.e. all pixels share the same z coordinate
 				   double L[] = {(light[i].xcord - x), (light[i].ycord - y), (light[i].zcord - 0}; // direction vector from point towards light source
@@ -143,7 +143,7 @@ void phongBlue(Material m, Lights* light, double* V, double* N, long Num, int Nu
 				   }
 				   
 				   intensity.val[0] += tAmb+tDiff+tSpec; // Change blue intensity value
-				   img2.at<Vec3b>(y, x) = intensity; // Change pixel
+				   img.at<Vec3b>(y, x) = intensity; // Change pixel
 			   }
 		   }
 	   }
