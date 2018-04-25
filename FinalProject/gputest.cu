@@ -9,6 +9,123 @@
 
 using namespace cv;
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+//                              FUNCTIONS IMPLEMENTATION                                           //
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct Material {
+  unsigned char ambient[3];
+  unsigned char diffuse[3];
+  unsigned char specular[3];
+  unsigned char shininess;
+
+};
+
+struct Light{
+  int xcord;
+  int ycord;
+  int zcord;
+  unsigned char Spec[3];
+  unsigned char Amb[3];
+  unsigned char Diff[3];
+};
+
+/**
+ * Generate rgb values for each light component
+ */
+ void generateMaterial(struct Material* m)
+ {
+     int i;
+     for (i=0; i<3; i++)
+     {
+         m -> ambient[i] = (rand() % 101);
+         m -> diffuse[i] = (rand() % 101);
+         m -> specular[i] = (rand() % 101);
+     }
+ 
+     //Assume shininess is always 1
+     m -> shininess = 1;
+ }
+ 
+ /**
+  * THis function will not be used. It is just for
+  * debugging purposes
+  */
+ void printMaterial(struct Material m)
+ {
+     int i, j, k;
+     for ( i=0; i<3; i++)
+     {
+         printf("%u ", m.ambient[i]);
+     }
+ 
+     printf("\n");
+ 
+     for ( j=0; j<3; j++)
+     {
+         printf("%u ", m.diffuse[j]);
+     }
+ 
+     printf("\n");
+ 
+     for ( k=0; k<3; k++)
+     {
+         printf("%u ", m.specular[k]);
+     }
+ 
+     printf("\n");
+ }
+ 
+ /**
+  * Return a pointer to a normalized vector
+  */
+ double* normalize(double vec[])
+ {
+     double magnitude;
+ 
+     double* tempN;
+ 
+     //Allocate space in memory for tempN
+     tempN = (double*) malloc(3 * sizeof(double));
+ 
+     //store the sum of each component squared in vec 
+     int SquaredTotal = 0; 
+ 
+     int h;
+     for ( h=0; h<3; h++)
+     {
+         SquaredTotal += pow(vec[h], 2);
+     }
+ 
+     magnitude = sqrt(SquaredTotal);
+ 
+     //normalize the vector
+     int j;
+     for (j=0; j<3; j++)
+     {
+         tempN[j] = vec[j] / magnitude;
+     }
+ 
+     return tempN;
+ }
+ 
+ /**
+  * Return the dot product between two vectors
+  */
+ double dotProduct(double vec1[], double vec2[])
+ {
+     double result = 0;
+ 
+     int h;
+     for (h=0; h<3; h++)
+     {
+         result += vec1[h] * vec2[h];
+     }
+ 
+     return result;
+ }
+ 
+ 
 long N = 6400000000;                                                                                                                                                                                         
 int doPrint = 0; 
 
@@ -61,7 +178,86 @@ void finish(float* a, long N, const char* c) {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// GPU function to square root values
+__global__ void gpu_sqrt(float* a, long N) {
+  long element = blockIdx.x*blockDim.x + threadIdx.x;
+  if (element < N) a[element] = sqrt(a[element]);
+}
 
+//Create three different arrays of channels
+__global__ void separateChannels(const uchar4* const d_original,
+                                unsigned char* const redChannel,
+                                unsigned char* const greenChannel,
+                                unsigned char* const blueChannel,
+                                int numRows, int numCols) {
+
+  const int2 indexTuple = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+                                    blockIdx.y * blockDim.y + threadIdx.y);
+  
+
+  if (indexTuple.x < numCols &&  indexTuple.y < numRows) {
+    // pixel index
+    const int index = indexTuple.y * numCols + indexTuple.x;
+
+    redChannel[index]   = d_original[index].x;
+    greenChannel[index] = d_original[index].y;
+    blueChannel[index]  = d_original[index].z;
+
+    // printf("%u\n", d_original[11957].x);
+  }
+
+}
+
+
+/**
+* @author: Arelys Alvarez
+* @params d_output Final image
+* @params redChannel The R component of the image
+* @params greenChannel The G component of the image
+* @params blueChannel The B component of the image
+* @params numRows Number of rows in image
+* @params numCols Number of columns in image
+*
+* This kernel takes in three color channels and recombines them
+* into one image.  The alpha channel is set to 255 to represent
+* that this image has no transparency.
+**/
+__global__
+void recombineChannels(uchar4* const d_output,
+                       const unsigned char* const redChannel,
+                       const unsigned char* const greenChannel,
+                       const unsigned char* const blueChannel,
+                       int numRows,
+                       int numCols)
+{
+
+const int2 indexTuple = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+    blockIdx.y * blockDim.y + threadIdx.y);
+
+
+// Check if threads are within the boundaries of the image
+if (indexTuple.x < numCols &&  indexTuple.y < numRows) {
+
+  // pixel index
+  const int index = indexTuple.y * numCols + indexTuple.x;
+
+  //Alpha should be 255 for no transparency
+  uchar4 outputPixel = make_uchar4(redChannel[index], greenChannel[index], blueChannel[index], 255);
+
+  d_output[index] = outputPixel;
+
+}
+
+}
+
+
+// GPU function for the Phong reflection model
+__global__ void gpu_phong(const unsigned char* const inputChannel,
+                          const unsigned char* const outputChannel,) {
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Normal C function to square root values
 void normal(float* a, long N)                                                                                                                                                                                     
@@ -70,12 +266,6 @@ void normal(float* a, long N)
   for (i = 0; i < N; ++i)                                                                                                                                                                                    
     a[i] = sqrt(a[i]);                                                                                                                                                                                           
 }                 
-
-// GPU function to square root values
-__global__ void gpu_sqrt(float* a, long N) {
-   long element = blockIdx.x*blockDim.x + threadIdx.x;
-   if (element < N) a[element] = sqrt(a[element]);
-}
 
 void gpuFunc(float* a, long N) {
    int numThreads = 1024; // This can vary, up to 1024
@@ -112,36 +302,79 @@ int main()
   Mat image = imread("original.jpg", 1); //original image in BGR format
   Mat imageRGBA; //original image in RGBA format
 
-  //convert an image from BGR channel to RGBA
+  //convert an image from BGR channel to RGBA and store it in imageRGBA
   cvtColor(image, imageRGBA, CV_BGR2RGBA);
 
 
-  uchar4 *h_original, *d_original;
+  uchar4 *h_original, *d_original, *combinedImageInput, *combinedImageOutput;
   unsigned char *h_output, *d_output; 
+  unsigned char *d_red, *d_green, *d_blue, *red, *green, *blue;
 
-  h_original = (uchar4 *)imageRGBA.ptr<unsigned char>(0);
 
   const size_t numPixels = image.rows * image.cols;
 
+  h_original = (uchar4 *) imageRGBA.ptr<unsigned char>(0);
+
+  combinedImageOutput = (uchar4*) malloc(numPixels * sizeof(uchar4));
+  h_output = (unsigned char*) malloc(numPixels * sizeof(unsigned char));
+  red = (unsigned char*) malloc(numPixels * sizeof(unsigned char));
+  green = (unsigned char*) malloc(numPixels * sizeof(unsigned char));
+  blue = (unsigned char*) malloc(numPixels * sizeof(unsigned char));
+
+
   // Alocate memory space in GPU
   cudaMalloc(&d_original, sizeof(uchar4) * numPixels);
+  cudaMalloc(&combinedImageInput, sizeof(uchar4) * numPixels);
   cudaMalloc(&d_output, sizeof(unsigned char) * numPixels);
+  cudaMalloc(&d_red, sizeof(unsigned char) * numPixels);
+  cudaMalloc(&d_green, sizeof(unsigned char) * numPixels);
+  cudaMalloc(&d_blue, sizeof(unsigned char) * numPixels);
 
   //copy original image to the gpu
-  cudaMemcpy(&d_original, &h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_original, h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
+  cudaMemcpy(combinedImageInput, h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
+  // cudaMemcpy(d_original, h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
+  // cudaMemset(&d_red,   0, sizeof(unsigned char) * numPixels);
 
 
   //Launch kernel here...
+  // gpu_phong<<<1, 1024>>>(d_original, d_output, image.rows, image.cols);
+
+  //opencv inverts rows and cols
+  int rows = image.cols;
+  int cols = image.rows;
+  const dim3 blockSize(32, 32);
+  const dim3 gridSize(image.rows/32 + 1, image.cols/32 + 1);
+
+  separateChannels<<<gridSize, blockSize>>>(d_original, d_red, d_green, d_blue, rows, cols);
+  recombineChannels<<<gridSize, blockSize>>>(combinedImageInput, d_red, d_green, d_blue, rows, cols);
+
+  // cudaMemcpy(h_output, d_output, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(red, d_red, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(green, d_green, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(blue, d_blue, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(combinedImageOutput, combinedImageInput, sizeof(uchar4) * numPixels, cudaMemcpyDeviceToHost);
 
 
-  printf("rows: %d\n", image.rows);
-  printf("cols: %d\n",image.cols);
-  printf("pixels: %d\n", numPixels);
 
-  printf("%u\n", h_original->x);
-  printf("%u\n", h_original->y);
-  printf("%u\n", h_original->z);
-  printf("%u\n", h_original->w);
+  cudaFree(d_original);
+  cudaFree(d_output);
+  cudaFree(d_red);
+  cudaFree(d_green);
+  cudaFree(d_blue);
+  cudaFree(combinedImageInput);
+
+  printf("%u\n", combinedImageOutput[11957].x);
+  printf("%u\n", combinedImageOutput[11957].y);
+  printf("%u\n", combinedImageOutput[11957].z);
+  printf("%u\n", combinedImageOutput[11957].w);
+
+
+  printf("%u\n", h_original[11957].x);
+  printf("%u\n", h_original[11957].y);
+  printf("%u\n", h_original[11957].z);
+  printf("%u\n", h_original[11957].w);
+
 
   return 0;
 }

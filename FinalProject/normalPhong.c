@@ -6,7 +6,7 @@ struct Material
     float diffuse[3]; // diffuse reflection constant for RGB respectively
     float specular[3]; // specular reflection constant for RGB respectively
     double shininess; // shininess constant
-}
+};
 
 struct Lights // Light source coordinates
 {
@@ -16,7 +16,7 @@ struct Lights // Light source coordinates
 	float iSpec[3]; // RGB intensity for specular component of light
 	float iDiff[3]; // RGB intensity for diffuse component of light
 	float iAmb[3]; // RGB intensity for ambient component of light
-}
+};
 
 double V[] = {7, 7, 7}; // normalized direction vector pointing towards viewer or camera, this is the same for all points
 double N[] = {0, 1, 0}; // normalized normal vector pointing up, this is the same for all pixels on the plane
