@@ -521,7 +521,7 @@ int main()
 
 
 
-  finish(a, N, "GPU");
+  finish(0, 0, "GPU");
   return 0;
 }
 
