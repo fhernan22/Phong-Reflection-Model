@@ -217,7 +217,7 @@ void phongBlue(Material m, Lights* light, double* V, double* N, long Num, int Nu
 		   {
 			   for (y = 0; y < img.cols; y++) // Iterate through columns of pixels
 			   {
-				   Vec3b intensity = img.at<Vec3b>(y, x); // BGR intensity of pixel
+				   Vec3b intensity = img.at<Vec3b>(y, x, z); // BGR intensity of pixel
 				   
 				   // Image is treated as a plane, i.e. all pixels share the same z coordinate
 				   double L[] = {(light[i].xcord - x), (light[i].ycord - y), (light[i].zcord - 0}; // direction vector from point towards light source
