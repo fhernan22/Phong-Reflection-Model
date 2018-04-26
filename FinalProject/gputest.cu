@@ -497,7 +497,7 @@ int main()
   gpu_phong<<<gridSize, blockSize>>>(d_original, d_red, 'R', d_redOutput, d_lights, d_material, rows, cols, numLights);
   gpu_phong<<<gridSize, blockSize>>>(d_original, d_green, 'G', d_greenOutput, d_lights, d_material, rows, cols, numLights);
   gpu_phong<<<gridSize, blockSize>>>(d_original, d_blue, 'B', d_blueOutput, d_lights, d_material, rows, cols, numLights);
-  recombineChannels<<<gridSize, blockSize>>>(combinedImageInput, d_red, d_green, d_blue, rows, cols);
+  recombineChannels<<<gridSize, blockSize>>>(combinedImageOutput, d_red, d_green, d_blue, rows, cols);
   
   
   cudaMemcpy(red, d_redOutput, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
@@ -517,17 +517,6 @@ int main()
   Mat output(rows, cols, CV_8UC4, (void*) combinedImageOutput);
   imwrite("output.jpg", output);
   
-
-  // printf("%u\n", combinedImageOutput[11957].x);
-  // printf("%u\n", combinedImageOutput[11957].y);
-  // printf("%u\n", combinedImageOutput[11957].z);
-  // printf("%u\n", combinedImageOutput[11957].w);
-
-
-  // printf("%u\n", h_original[11957].x);
-  // printf("%u\n", h_original[11957].y);
-  // printf("%u\n", h_original[11957].z);
-  // printf("%u\n", h_original[11957].w);
 
 
 
