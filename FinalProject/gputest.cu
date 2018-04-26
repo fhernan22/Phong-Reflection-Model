@@ -62,9 +62,9 @@ struct Light{
 
      for (i=0; i<3; i++)
      {
-         l -> Amb[i] = (rand() / 256);
-         l -> Spec[i] = (rand() / 256);
-         l -> Diff[i] = (rand() / 256);
+         l -> Amb[i] = (rand() % 256);
+         l -> Spec[i] = (rand() % 256);
+         l -> Diff[i] = (rand() % 256);
      }
 
  }
@@ -445,7 +445,7 @@ int main()
 
   uchar4 *h_original, *d_original, *combinedImageInput, *combinedImageOutput;
   unsigned char *h_output, *d_output; 
-  unsigned char *d_red, *d_green, *d_blue, *red, *green, *blue;
+  unsigned char *d_red, *d_green, *d_blue, *red, *green, *blue, *d_redOutput, *d_greenOutput, *d_blueOutput ;
   Material *h_material, *d_material;
   struct Light h_lights[2], *d_lights;
 
@@ -462,15 +462,12 @@ int main()
 
   generateMaterial(h_material); //generate random material
 
-  // printMaterial(*d_material);  
-
   int numLights = 2; //number of lights
   int k;
   for (k = 0; k < numLights; k++){
+    srand(time(0));
     generateLights(&h_lights[k], image.rows, image.cols);
   }
-
-  printf("%d %d\n", h_lights[0].xcord, h_lights[1].ycord);
 
   // Alocate memory space in GPU
   cudaMalloc(&d_original, sizeof(uchar4) * numPixels);
@@ -479,29 +476,33 @@ int main()
   cudaMalloc(&d_red, sizeof(unsigned char) * numPixels);
   cudaMalloc(&d_green, sizeof(unsigned char) * numPixels);
   cudaMalloc(&d_blue, sizeof(unsigned char) * numPixels);
-  cudaMalloc(&d_material, sizeof(Material) * numPixels);
- 
+  cudaMalloc(&d_material, sizeof(Material));
+  cudaMalloc(&d_lights, sizeof(Light) * 2);
 
   //copy original image to the gpu
   cudaMemcpy(d_original, h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
   cudaMemcpy(combinedImageInput, h_original, sizeof(uchar4) * numPixels, cudaMemcpyHostToDevice);
-  cudaMemcpy(d_material, h_material, sizeof(Material) * numPixels, cudaMemcpyHostToDevice);   //copy material to gpu
+  cudaMemcpy(d_material, h_material, sizeof(Material), cudaMemcpyHostToDevice);   //copy material to gpu
+  cudaMemcpy(d_lights, h_lights, sizeof(Material) * 2, cudaMemcpyHostToDevice);
  
  
 
   //opencv inverts rows and cols
-  int rows = image.cols;
-  int cols = image.rows;
+  int rows = image.rows;
+  int cols = image.cols;
   const dim3 blockSize(32, 32);
   const dim3 gridSize(image.rows/32 + 1, image.cols/32 + 1);
 
   separateChannels<<<gridSize, blockSize>>>(d_original, d_red, d_green, d_blue, rows, cols);
+  gpu_phong<<<gridSize, blockSize>>>(d_original, d_red, 'R', d_redOutput, d_lights, d_material, rows, cols, numLights);
+  gpu_phong<<<gridSize, blockSize>>>(d_original, d_green, 'G', d_greenOutput, d_lights, d_material, rows, cols, numLights);
+  gpu_phong<<<gridSize, blockSize>>>(d_original, d_blue, 'B', d_blueOutput, d_lights, d_material, rows, cols, numLights);
   recombineChannels<<<gridSize, blockSize>>>(combinedImageInput, d_red, d_green, d_blue, rows, cols);
   
-
-  cudaMemcpy(red, d_red, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
-  cudaMemcpy(green, d_green, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
-  cudaMemcpy(blue, d_blue, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  
+  cudaMemcpy(red, d_redOutput, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(green, d_greenOutput, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
+  cudaMemcpy(blue, d_blueOutput, sizeof(unsigned char) * numPixels, cudaMemcpyDeviceToHost);
   cudaMemcpy(combinedImageOutput, combinedImageInput, sizeof(uchar4) * numPixels, cudaMemcpyDeviceToHost);
  
 
@@ -512,6 +513,9 @@ int main()
   cudaFree(d_green);
   cudaFree(d_blue);
   cudaFree(combinedImageInput);
+
+  Mat output(rows, cols, CV_8UC4, (void*) combinedImageOutput);
+  imwrite("output.jpg", output);
   
 
   // printf("%u\n", combinedImageOutput[11957].x);
@@ -520,10 +524,10 @@ int main()
   // printf("%u\n", combinedImageOutput[11957].w);
 
 
-  printf("%u\n", h_original[11957].x);
-  printf("%u\n", h_original[11957].y);
-  printf("%u\n", h_original[11957].z);
-  printf("%u\n", h_original[11957].w);
+  // printf("%u\n", h_original[11957].x);
+  // printf("%u\n", h_original[11957].y);
+  // printf("%u\n", h_original[11957].z);
+  // printf("%u\n", h_original[11957].w);
 
 
 
