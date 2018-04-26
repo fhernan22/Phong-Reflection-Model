@@ -434,6 +434,7 @@ int main()
   gpuFunc(a, N);  
   finish(a, N, "GPU");*/
 
+  init(0, 0, "GPU");
   srand(time(0)); //to use srand funtion
 
   Mat image = imread("original.jpg", 1); //original image in BGR format
@@ -520,6 +521,7 @@ int main()
 
 
 
+  finish(a, N, "GPU");
   return 0;
 }
 
