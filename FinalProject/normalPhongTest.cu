@@ -295,6 +295,8 @@ int main()
   gpuFunc(a, N);  
   finish(a, N, "GPU");*/
 
+  init(0, 0, "Normal");
+	
   Mat image = imread("original.jpg", 1); //original image in BGR format
   Mat imageRGBA; //original image in RGBA format
   
@@ -334,5 +336,6 @@ int main()
   printf("%u\n", h_original->z);
   printf("%u\n", h_original->w);
 
+  finish(0, 0, "Normal");	
   return 0;
 }
